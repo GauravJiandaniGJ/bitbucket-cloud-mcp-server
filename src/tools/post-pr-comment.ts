@@ -8,6 +8,7 @@ export const postPrCommentSchema = z.object({
   repo_slug: z.string().describe('Repository slug'),
   pr_id: z.number().describe('Pull request ID'),
   content: z.string().describe('Comment content (markdown supported)'),
+  parent_id: z.number().optional().describe('Comment ID to reply to (for threaded replies to review comments)'),
   inline: z
     .object({
       path: z.string().describe('File path for inline comment'),
@@ -31,6 +32,10 @@ export async function postPrComment(
       content: { raw: input.content },
     };
 
+    if (input.parent_id) {
+      body.parent = { id: input.parent_id };
+    }
+
     if (input.inline) {
       body.inline = {
         to: input.inline.line,
@@ -46,7 +51,9 @@ export async function postPrComment(
     const lines = [`Comment posted on PR #${input.pr_id}.`];
     lines.push(`Comment ID: ${comment.id}`);
 
-    if (input.inline) {
+    if (input.parent_id) {
+      lines.push(`Type: Reply to comment #${input.parent_id}`);
+    } else if (input.inline) {
       lines.push(`Type: Inline comment on ${input.inline.path}:${input.inline.line}`);
     } else {
       lines.push('Type: General comment');

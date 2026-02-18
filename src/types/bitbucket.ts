@@ -34,6 +34,17 @@ export interface BitbucketComment {
   };
   parent?: { id: number };
   links: { html: { href: string } };
+  resolved?: boolean;
+}
+
+export interface BitbucketTask {
+  id: number;
+  content: { raw: string; markup: string; html: string };
+  creator: BitbucketUser;
+  created_on: string;
+  updated_on: string;
+  state: 'UNRESOLVED' | 'RESOLVED';
+  comment: { id: number };
 }
 
 export interface PaginatedResponse<T> {

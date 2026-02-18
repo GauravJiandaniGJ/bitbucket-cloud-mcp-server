@@ -11,6 +11,8 @@ import { getPrSchema, getPr } from './get-pr.js';
 import { getPrDiffSchema, getPrDiff } from './get-pr-diff.js';
 import { listPrCommentsSchema, listPrComments } from './list-pr-comments.js';
 import { postPrCommentSchema, postPrComment } from './post-pr-comment.js';
+import { resolvePrCommentSchema, resolvePrComment } from './resolve-pr-comment.js';
+import { fetchAndResolvePrCommentsSchema, fetchAndResolvePrComments } from './fetch-and-resolve-pr-comments.js';
 
 import { zodToJsonSchema } from '../utils/zod-to-json-schema.js';
 
@@ -49,6 +51,18 @@ export function registerTools(server: Server): void {
           'Post a comment on a pull request. Supports both general comments and inline comments on specific files/lines.',
         inputSchema: zodToJsonSchema(postPrCommentSchema),
       },
+      {
+        name: 'bitbucket_resolve_pr_comment',
+        description:
+          'Resolve a task on a pull request. Use bitbucket_list_pr_comments first to get the task_id, then call this tool to mark the task as resolved.',
+        inputSchema: zodToJsonSchema(resolvePrCommentSchema),
+      },
+      {
+        name: 'bitbucket_fetch_and_resolve_pr_comments',
+        description:
+          'Fetch all comments on a pull request and automatically resolve all unresolved tasks in one step. Shows every comment, then resolves all pending tasks.',
+        inputSchema: zodToJsonSchema(fetchAndResolvePrCommentsSchema),
+      },
     ],
   }));
 
@@ -73,6 +87,12 @@ export function registerTools(server: Server): void {
         break;
       case 'bitbucket_post_pr_comment':
         result = await postPrComment(client, postPrCommentSchema.parse(args));
+        break;
+      case 'bitbucket_resolve_pr_comment':
+        result = await resolvePrComment(client, resolvePrCommentSchema.parse(args));
+        break;
+      case 'bitbucket_fetch_and_resolve_pr_comments':
+        result = await fetchAndResolvePrComments(client, fetchAndResolvePrCommentsSchema.parse(args));
         break;
       default:
         result = `Unknown tool: ${name}`;
