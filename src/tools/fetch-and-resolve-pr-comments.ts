@@ -81,7 +81,6 @@ export async function fetchAndResolvePrComments(
           lines.push(`[Comment #${comment.id}] @${author} — General`);
         }
         lines.push(`  "${comment.content.raw}"`);
-        lines.push(`  → Address this in code, then reply using bitbucket_post_pr_comment with parent_id=${comment.id}`);
         lines.push('');
       }
     }
