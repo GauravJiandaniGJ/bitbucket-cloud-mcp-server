@@ -60,7 +60,7 @@ export function registerTools(server: Server): void {
       {
         name: 'bitbucket_fetch_and_resolve_pr_comments',
         description:
-          'Fetch all comments on a pull request and automatically resolve all unresolved tasks in one step. Shows every comment, then resolves all pending tasks.',
+          'Fetch all comments on a pull request and automatically resolve all unresolved tasks. By default shows concise summaries to save tokens. Set verbose=true for full comment text.',
         inputSchema: zodToJsonSchema(fetchAndResolvePrCommentsSchema),
       },
     ],

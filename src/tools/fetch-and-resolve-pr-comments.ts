@@ -7,6 +7,7 @@ export const fetchAndResolvePrCommentsSchema = z.object({
   workspace: z.string().optional().describe('Bitbucket workspace slug (uses default if not set)'),
   repo_slug: z.string().describe('Repository slug'),
   pr_id: z.number().describe('Pull request ID'),
+  verbose: z.boolean().optional().default(false).describe('Show full comment text (default: false, only shows summaries)'),
 });
 
 export type FetchAndResolvePrCommentsInput = z.infer<typeof fetchAndResolvePrCommentsSchema>;
@@ -44,44 +45,54 @@ export async function fetchAndResolvePrComments(
     const humanComments = comments.filter((c) => !isBot(c.user.display_name) && !c.parent);
     const botComments = comments.filter((c) => isBot(c.user.display_name) && !c.parent);
 
-    // Step 2a: Show all comments grouped
-    lines.push('--- ALL COMMENTS ---\n');
-    for (const comment of comments) {
-      const author = comment.user.display_name;
-      const tag = isBot(author) ? '[BOT]' : '[HUMAN]';
-      if (comment.inline) {
-        const line = comment.inline.to ?? comment.inline.from ?? '?';
-        lines.push(`[Comment #${comment.id}] ${tag} @${author} — ${comment.inline.path}:${line}`);
-      } else {
-        lines.push(`[Comment #${comment.id}] ${tag} @${author} — General`);
-      }
-      if (comment.parent) {
-        lines.push(`  (reply to #${comment.parent.id})`);
-      }
-      lines.push(`  ${comment.content.raw}`);
-
-      const commentTasks = tasksByCommentId.get(comment.id);
-      if (commentTasks) {
-        for (const t of commentTasks) {
-          lines.push(`  [Task #${t.id}] ${t.state}: ${t.content.raw}`);
-        }
-      }
-      lines.push('');
-    }
-
-    // Step 2b: Highlight human comments that need attention
-    if (humanComments.length > 0) {
-      lines.push('--- HUMAN REVIEW COMMENTS REQUIRING ATTENTION ---\n');
-      for (const comment of humanComments) {
+    // Step 2: Show comments (verbosity controlled)
+    if (input.verbose) {
+      // Verbose mode: Show all comments with full text
+      lines.push('--- ALL COMMENTS ---\n');
+      for (const comment of comments) {
         const author = comment.user.display_name;
+        const tag = isBot(author) ? '[BOT]' : '[HUMAN]';
         if (comment.inline) {
           const line = comment.inline.to ?? comment.inline.from ?? '?';
-          lines.push(`[Comment #${comment.id}] @${author} on ${comment.inline.path}:${line}`);
+          lines.push(`[Comment #${comment.id}] ${tag} @${author} — ${comment.inline.path}:${line}`);
         } else {
-          lines.push(`[Comment #${comment.id}] @${author} — General`);
+          lines.push(`[Comment #${comment.id}] ${tag} @${author} — General`);
         }
-        lines.push(`  "${comment.content.raw}"`);
+        if (comment.parent) {
+          lines.push(`  (reply to #${comment.parent.id})`);
+        }
+        lines.push(`  ${comment.content.raw}`);
+
+        const commentTasks = tasksByCommentId.get(comment.id);
+        if (commentTasks) {
+          for (const t of commentTasks) {
+            lines.push(`  [Task #${t.id}] ${t.state}: ${t.content.raw}`);
+          }
+        }
         lines.push('');
+      }
+    } else {
+      // Concise mode (default): Only show human comments summary
+      if (humanComments.length > 0) {
+        lines.push('--- HUMAN REVIEW COMMENTS ---\n');
+        for (const comment of humanComments) {
+          const author = comment.user.display_name;
+          const preview = comment.content.raw.length > 80
+            ? comment.content.raw.substring(0, 77) + '...'
+            : comment.content.raw;
+
+          if (comment.inline) {
+            const line = comment.inline.to ?? comment.inline.from ?? '?';
+            lines.push(`[#${comment.id}] @${author} on ${comment.inline.path}:${line} — ${preview}`);
+          } else {
+            lines.push(`[#${comment.id}] @${author} (general) — ${preview}`);
+          }
+        }
+        lines.push('');
+      }
+
+      if (botComments.length > 0) {
+        lines.push(`Bot comments: ${botComments.length} (use verbose=true to see details)\n`);
       }
     }
 
